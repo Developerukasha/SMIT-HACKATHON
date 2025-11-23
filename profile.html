@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Ukasha's App</title>
+    <meta name="description" content="Your profile page">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/feed.css">
+    <link rel="stylesheet" href="styles/profile.css">
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-content">
+            <h1 class="logo">Ukasha's App</h1>
+            <div class="header-right">
+                <a href="feed.html" class="nav-link">🏠 Feed</a>
+                <a href="profile.html" class="nav-link active">👤 Profile</a>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span id="themeIcon">☀️</span>
+                </button>
+                <button id="logoutBtn" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Profile Header -->
+            <section class="profile-header">
+                <div class="profile-avatar-container">
+                    <img id="profileAvatar" src="" alt="Profile Picture" class="profile-avatar">
+                </div>
+                <div class="profile-info">
+                    <h2 id="profileName" class="profile-name"></h2>
+                    <p id="profileEmail" class="profile-email"></p>
+                    <p id="profileBio" class="profile-bio"></p>
+                    <button id="editProfileBtn" class="btn-primary">Edit Profile</button>
+                </div>
+            </section>
+
+            <!-- User's Posts -->
+            <section class="profile-posts">
+                <h3>My Posts</h3>
+                <div id="userPostsContainer" class="feed-container">
+                    <!-- User's posts will be dynamically inserted here -->
+                </div>
+                <div id="emptyPosts" class="empty-state" style="display: none;">
+                    <p>You haven't created any posts yet.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="js/theme.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/popup.js"></script>
+    <script src="js/posts.js"></script>
+    <script>
+        // Check authentication
+        const currentUserData = getCurrentUser();
+        if (!currentUserData) {
+            window.location.href = 'login.html';
+        } else {
+            // Display profile info
+            document.getElementById('profileAvatar').src = currentUserData.profilePicture;
+            document.getElementById('profileName').textContent = currentUserData.name;
+            document.getElementById('profileEmail').textContent = currentUserData.email;
+            document.getElementById('profileBio').textContent = currentUserData.bio || 'No bio yet';
+
+            // Load user's posts
+            loadUserPosts();
+
+            // Edit profile button
+            document.getElementById('editProfileBtn').addEventListener('click', showEditProfileModal);
+        }
+
+        // Theme toggle handler
+        document.getElementById('themeToggle').addEventListener('click', function () {
+            toggleTheme();
+        });
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', function () {
+            logout();
+            showPopup('Logged out successfully', 'info');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1000);
+        });
+
+        // Load user's posts only
+        function loadUserPosts() {
+            const posts = getPosts();
+            const userPosts = posts.filter(post => post.userId === currentUserData.id);
+
+            const container = document.getElementById('userPostsContainer');
+            const emptyState = document.getElementById('emptyPosts');
+
+            container.innerHTML = '';
+
+            if (userPosts.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            userPosts.forEach(post => {
+                container.appendChild(renderPostCard(post));
+            });
+        }
+
+        // Show edit profile modal
+        function showEditProfileModal() {
+            const modal = document.createElement('div');
+            modal.className = 'edit-modal';
+            modal.id = 'editProfileModal';
+
+            modal.innerHTML = `
+                <div class="edit-modal-content">
+                    <div class="edit-modal-header">
+                        <h3>Edit Profile</h3>
+                        <button class="edit-modal-close" onclick="closeEditProfileModal()">&times;</button>
+                    </div>
+                    <div class="edit-modal-body">
+                        <div class="form-group">
+                            <label for="editName">Name</label>
+                            <input type="text" id="editName" value="${currentUserData.name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editProfilePicture">Profile Picture URL</label>
+                            <input type="url" id="editProfilePicture" placeholder="https://example.com/avatar.jpg" value="${currentUserData.profilePicture}">
+                            <small style="color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.25rem; display: block;">Leave blank to use default avatar</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editBio">Bio</label>
+                            <textarea id="editBio" rows="3" placeholder="Tell us about yourself...">${currentUserData.bio || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="edit-modal-footer">
+                        <button class="btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                        <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Close on outside click
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) {
+                    closeEditProfileModal();
+                }
+            });
+        }
+
+        // Close edit profile modal
+        function closeEditProfileModal() {
+            const modal = document.getElementById('editProfileModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Save profile changes
+        function saveProfile() {
+            const name = document.getElementById('editName').value;
+            const profilePicture = document.getElementById('editProfilePicture').value;
+            const bio = document.getElementById('editBio').value;
+
+            if (!name.trim()) {
+                showPopup('Name is required', 'error');
+                return;
+            }
+
+            const result = updateProfile({
+                name: name,
+                profilePicture: profilePicture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=3B82F6&color=fff&size=128',
+                bio: bio
+            });
+
+            if (result.success) {
+                // Update display
+                document.getElementById('profileAvatar').src = result.user.profilePicture;
+                document.getElementById('profileName').textContent = result.user.name;
+                document.getElementById('profileBio').textContent = result.user.bio || 'No bio yet';
+
+                closeEditProfileModal();
+                showPopup('Profile updated successfully!', 'success');
+
+                // Reload posts to show updated name/avatar
+                setTimeout(() => {
+                    loadUserPosts();
+                }, 500);
+            } else {
+                showPopup(result.message, 'error');
+            }
+        }
+
+        // Expose functions globally
+        window.closeEditProfileModal = closeEditProfileModal;
+        window.saveProfile = saveProfile;
+    </script>
+</body>
+
+</html>

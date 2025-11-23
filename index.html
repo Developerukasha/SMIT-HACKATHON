@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukasha's App - Connect & Share</title>
+    <meta name="description" content="A modern social media platform to connect and share moments">
+</head>
+
+<body>
+    <script>
+        // Redirect to appropriate page based on authentication
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            window.location.href = 'feed.html';
+        } else {
+            window.location.href = 'signup.html';
+        }
+    </script>
+</body>
+
+</html>
